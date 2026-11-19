@@ -118,6 +118,10 @@ h1.big { font-size: clamp(28px, 6vw, 38px); }
 .patline { font-family: var(--display); font-size: 18px; text-align: center; max-width: none; }
 .opt.sel { border-color: var(--accent); background: var(--accent-soft); }
 canvas.tap { cursor: crosshair; touch-action: manipulation; }
+.plotbox { width: 100%; max-width: min(680px, calc(100vh - 130px)); margin: 0 auto; }
+.plotbox canvas { max-width: 100%; }
+.ploteq { font-family: var(--display); font-weight: 700; font-size: clamp(22px, 5vw, 30px); text-align: center; padding: 4px 0 8px; }
+.plothint { font-size: 15px; color: var(--muted); text-align: center; padding-bottom: 6px; }
 .rule.steps span { line-height: 1.6; }
 </style>
 </head>
@@ -427,7 +431,7 @@ function plot(el, a, h, k) {
   const q = document.createElement("div"); q.className = "q";
   q.innerHTML = `<h2>4. Graph it! Tap the grid to plot points.</h2>
     <p class="small">Plot the vertex, then use the pattern to plot <b>2 points on each side</b> (over 1 and over 2). Tap a point again to remove it.</p>
-    <div class="graph mid"><canvas id="pc" class="tap"></canvas></div>
+    <div class="graph plotbox"><div class="ploteq">${eqHTML(a, h, k)}</div><canvas id="pc" class="tap"></canvas></div>
     <p class="small muted" id="plist">Your points: none yet</p>
     <div class="chips"><button class="btn sm" id="pchk">Check my graph</button><button class="chip" id="pclr">Clear</button></div>
     <div class="fb" id="pfb" aria-live="polite"></div>`;
@@ -470,6 +474,7 @@ function plot(el, a, h, k) {
     render();
   };
   window.__redraw = render; render();
+  requestAnimationFrame(() => q.querySelector(".plotbox").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }));
 }
 
 function stepEnd(el) {
