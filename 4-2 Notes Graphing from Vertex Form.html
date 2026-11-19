@@ -120,6 +120,19 @@ h1.big { font-size: clamp(28px, 6vw, 38px); }
 canvas.tap { cursor: crosshair; touch-action: manipulation; }
 .plotbox { width: 100%; max-width: min(680px, calc(100vh - 130px)); margin: 0 auto; }
 .plotbox canvas { max-width: 100%; }
+html, body { overflow-x: clip; }
+.plotrow { display: flex; flex-direction: column; gap: 16px; align-items: center; }
+.plotrow.haspanel { width: min(1080px, calc(100vw - 32px)); position: relative; left: 50%; transform: translateX(-50%); }
+.mult { background: var(--accent-soft); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 460px; }
+.mult h3 { font-family: var(--display); font-size: 20px; margin: 0; }
+.mult .pat { font-size: 16px; }
+.mult .pat td, .mult .pat th { padding: 6px 8px; }
+.mult .pat input { width: 3.6em; }
+@media (min-width: 900px) {
+  .plotrow.haspanel { flex-direction: row; align-items: flex-start; justify-content: center; }
+  .plotrow.haspanel .plotbox { flex: 0 1 auto; width: 100%; margin: 0; }
+  .mult { flex: 0 0 340px; }
+}
 .ploteq { font-family: var(--display); font-weight: 700; font-size: clamp(22px, 5vw, 30px); text-align: center; padding: 4px 0 8px; }
 .plothint { font-size: 15px; color: var(--muted); text-align: center; padding-bottom: 6px; }
 .rule.steps span { line-height: 1.6; }
@@ -431,7 +444,10 @@ function plot(el, a, h, k) {
   const q = document.createElement("div"); q.className = "q";
   q.innerHTML = `<h2>4. Graph it! Tap the grid to plot points.</h2>
     <p class="small">Plot the vertex, then use the pattern to plot <b>2 points on each side</b> (over 1 and over 2). Tap a point again to remove it.</p>
-    <div class="graph plotbox"><div class="ploteq">${eqHTML(a, h, k)}</div><canvas id="pc" class="tap"></canvas></div>
+    <div class="plotrow${Math.abs(a) !== 1 ? " haspanel" : ""}">
+      <div class="graph plotbox"><div class="ploteq">${eqHTML(a, h, k)}</div><canvas id="pc" class="tap"></canvas></div>
+      ${Math.abs(a) !== 1 ? multPanel(a) : ""}
+    </div>
     <p class="small muted" id="plist">Your points: none yet</p>
     <div class="chips"><button class="btn sm" id="pchk">Check my graph</button><button class="chip" id="pclr">Clear</button></div>
     <div class="fb" id="pfb" aria-live="polite"></div>`;
@@ -474,7 +490,37 @@ function plot(el, a, h, k) {
     render();
   };
   window.__redraw = render; render();
-  requestAnimationFrame(() => q.querySelector(".plotbox").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }));
+  wireMult(q, a);
+  requestAnimationFrame(() => q.querySelector(".plotrow").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }));
+}
+
+// side panel: the standard pattern times a
+function multPanel(a) {
+  const dir = a > 0 ? "up" : "down";
+  return `<div class="mult" id="mult">
+    <h3>Pattern × a</h3>
+    <p class="small">The standard pattern is 1, 4, 9. Multiply each one by <b>a = ${fmtN(a)}</b>.</p>
+    <table class="pat"><thead><tr><th>Over</th><th>Standard</th><th>× a</th></tr></thead><tbody>
+      ${[1, 2, 3].map(i => `<tr><td>over <b>${i}</b></td><td>${i * i}</td><td>${i * i} × ${fmtN(a)} = <input id="m${i}" inputmode="decimal" aria-label="${i * i} times a"></td></tr>`).join("")}
+    </tbody></table>
+    <div><button class="btn sm" id="mchk">Check</button></div>
+    <div class="fb" id="mfb" aria-live="polite"></div>
+    <p class="small muted">${a < 0 ? "a is negative, so your answers are negative: go DOWN." : "a is positive, so go UP."} You may not be able to graph the over 3 point.</p>
+  </div>`;
+}
+function wireMult(q, a) {
+  const b = q.querySelector("#mchk"); if (!b) return;
+  b.onclick = () => {
+    let ok = true;
+    [1, 2, 3].forEach(i => {
+      const inp = q.querySelector("#m" + i), good = Math.abs(parseNum(inp.value) - i * i * a) < 1e-9;
+      inp.classList.toggle("good", good); inp.classList.toggle("badin", !good); ok = ok && good;
+    });
+    const fb = q.querySelector("#mfb");
+    fb.className = "fb " + (ok ? "right" : "wrong");
+    fb.textContent = ok ? `Yes! From the vertex: over 1 ${a > 0 ? "up" : "down"} ${fmtN(Math.abs(a))}, over 2 ${a > 0 ? "up" : "down"} ${fmtN(Math.abs(4 * a))}. Now plot those points.`
+      : "Not yet. Multiply each standard number (1, 4, 9) by a." + (a < 0 ? " Remember a is negative." : "");
+  };
 }
 
 function stepEnd(el) {
